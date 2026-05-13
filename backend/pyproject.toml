@@ -1,0 +1,27 @@
+[project]
+name = "nodi-backend"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "sqlmodel>=0.0.21",
+    "python-multipart>=0.0.9",
+    "python-dotenv>=1.0.0",
+    "openai>=1.40.0",
+    "google-genai>=1.0.0",
+    "google-cloud-texttospeech>=2.17.0",
+    "librosa>=0.10.2",
+    "soundfile>=0.12.1",
+    "numpy>=1.26.0",
+    "aiofiles>=24.1.0",
+    "httpx>=0.27.0",
+    "imageio-ffmpeg>=0.5.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
