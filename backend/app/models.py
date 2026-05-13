@@ -101,6 +101,8 @@ class Evaluation(SQLModel, table=True):
     llm_reasoning_md: Optional[str] = None
     acoustic_summary_json: Optional[str] = None
     linguistic_summary_json: Optional[str] = None
+    hire_recommendation: Optional[str] = None  # "yes" | "no" | "maybe"
+    recommendation_reason: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     session: Optional[InterviewSession] = Relationship(back_populates="evaluation")

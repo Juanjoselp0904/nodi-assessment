@@ -20,6 +20,8 @@ class SessionListItem(BaseModel):
     tech_fit: Optional[float] = None
     culture_fit: Optional[float] = None
     naturalness_factor: Optional[float] = None
+    hire_recommendation: Optional[str] = None
+    recommendation_reason: Optional[str] = None
     created_at: str
 
 
@@ -44,6 +46,8 @@ def list_sessions(db: Session = Depends(get_session)):
             tech_fit=ev.final_tech_fit if ev else None,
             culture_fit=ev.final_culture_fit if ev else None,
             naturalness_factor=ev.naturalness_factor if ev else None,
+            hire_recommendation=ev.hire_recommendation if ev else None,
+            recommendation_reason=ev.recommendation_reason if ev else None,
             created_at=s.created_at.isoformat(),
         ))
     return result
@@ -122,6 +126,8 @@ def finalize_session(session_id: int, db: Session = Depends(get_session)):
         llm_reasoning_md=eval_result.get("reasoning_md", ""),
         acoustic_summary_json=json.dumps(nat["acoustic_breakdown"], ensure_ascii=False),
         linguistic_summary_json=json.dumps(nat["linguistic_breakdown"], ensure_ascii=False),
+        hire_recommendation=eval_result.get("hire_recommendation"),
+        recommendation_reason=eval_result.get("recommendation_reason"),
     )
     db.add(evaluation)
 
@@ -179,6 +185,8 @@ def get_report(session_id: int, db: Session = Depends(get_session)):
             "reasoning_md": ev.llm_reasoning_md,
             "acoustic_summary": json.loads(ev.acoustic_summary_json) if ev.acoustic_summary_json else {},
             "linguistic_summary": json.loads(ev.linguistic_summary_json) if ev.linguistic_summary_json else {},
+            "hire_recommendation": ev.hire_recommendation,
+            "recommendation_reason": ev.recommendation_reason,
         }
 
     return {
@@ -194,3 +202,75 @@ def get_report(session_id: int, db: Session = Depends(get_session)):
         "qa_detail": qa_detail,
         "evaluation": evaluation_data,
     }
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+class ChatResponse(BaseModel):
+    reply: str
+
+
+@router.post("/sessions/{session_id}/chat", response_model=ChatResponse)
+def recruiter_chat(session_id: int, body: ChatRequest, db: Session = Depends(get_session)):
+    session = db.get(InterviewSession, session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+
+    ev = session.evaluation
+    if not ev:
+        raise HTTPException(400, "Candidate has no evaluation yet. Run finalize first.")
+
+    if not body.messages or body.messages[-1].role != "user":
+        raise HTTPException(400, "Last message must be from user")
+
+    questions = db.exec(
+        select(Question)
+        .where(Question.session_id == session_id)
+        .order_by(Question.order)
+    ).all()
+
+    qa_pairs = []
+    for q in questions:
+        answer = db.exec(select(Answer).where(Answer.question_id == q.id)).first()
+        if answer and answer.transcript:
+            qa_pairs.append({
+                "dimension": q.dimension.value,
+                "question": q.text,
+                "transcript": answer.transcript,
+            })
+
+    candidate_data = {
+        "candidate_name": session.candidate_name,
+        "cv_text": session.cv_text or "",
+        "tech_text": session.tech_text,
+        "culture_text": session.culture_text,
+        "qa_pairs": qa_pairs,
+        "tech_score": ev.tech_score,
+        "culture_score": ev.culture_score,
+        "naturalness_factor": ev.naturalness_factor,
+        "final_tech_fit": ev.final_tech_fit,
+        "final_culture_fit": ev.final_culture_fit,
+        "hire_recommendation": ev.hire_recommendation or "unknown",
+        "recommendation_reason": ev.recommendation_reason or "",
+        "reasoning_md": ev.llm_reasoning_md or "",
+        "evidence": json.loads(ev.evidence_json) if ev.evidence_json else [],
+        "linguistic_summary": json.loads(ev.linguistic_summary_json) if ev.linguistic_summary_json else {},
+        "acoustic_summary": json.loads(ev.acoustic_summary_json) if ev.acoustic_summary_json else {},
+    }
+
+    user_message = body.messages[-1].content
+    history = [{"role": m.role, "content": m.content} for m in body.messages[:-1]]
+
+    try:
+        reply = llm_service.recruiter_chat(candidate_data, history, user_message)
+    except Exception as e:
+        raise HTTPException(500, f"Chat failed: {str(e)}")
+
+    return ChatResponse(reply=reply.strip())

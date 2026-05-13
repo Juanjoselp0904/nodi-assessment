@@ -140,3 +140,50 @@ def final_evaluation(
     )
     raw = _call_gemini(prompt, model="gemini-2.5-pro")
     return _parse_json(raw)
+
+
+def recruiter_chat(
+    candidate_data: dict,
+    conversation_history: list[dict],
+    user_message: str,
+) -> str:
+    """
+    candidate_data: dict with keys candidate_name, cv_text, tech_text, culture_text,
+                    qa_pairs (list), tech_score, culture_score, naturalness_factor,
+                    final_tech_fit, final_culture_fit, hire_recommendation,
+                    recommendation_reason, reasoning_md, evidence (list),
+                    linguistic_summary, acoustic_summary
+    conversation_history: list of {"role": "user"|"assistant", "content": str}
+    """
+    qa_text = "\n\n".join(
+        f"Q{i+1} [{qa['dimension']}]: {qa['question']}\nA: {qa['transcript']}"
+        for i, qa in enumerate(candidate_data.get("qa_pairs", []))
+    )
+    evidence_text = json.dumps(candidate_data.get("evidence", []), ensure_ascii=False, indent=2)
+    history_text = "\n".join(
+        f"{m['role'].upper()}: {m['content']}" for m in conversation_history
+    ) or "(no previous messages)"
+
+    template = _load_prompt("recruiter_chat.md")
+    prompt = _render_prompt(
+        template,
+        candidate_name=candidate_data.get("candidate_name", ""),
+        cv_text=candidate_data.get("cv_text") or "No CV provided.",
+        tech_text=candidate_data.get("tech_text", ""),
+        culture_text=candidate_data.get("culture_text", ""),
+        qa_pairs=qa_text,
+        tech_score=candidate_data.get("tech_score", 0),
+        culture_score=candidate_data.get("culture_score", 0),
+        naturalness_factor=candidate_data.get("naturalness_factor", 1.0),
+        final_tech_fit=candidate_data.get("final_tech_fit", 0),
+        final_culture_fit=candidate_data.get("final_culture_fit", 0),
+        hire_recommendation=candidate_data.get("hire_recommendation", "unknown"),
+        recommendation_reason=candidate_data.get("recommendation_reason", ""),
+        reasoning_md=candidate_data.get("reasoning_md", ""),
+        evidence=evidence_text,
+        linguistic_summary=json.dumps(candidate_data.get("linguistic_summary", {}), ensure_ascii=False),
+        acoustic_summary=json.dumps(candidate_data.get("acoustic_summary", {}), ensure_ascii=False),
+        conversation_history=history_text,
+        user_message=user_message,
+    )
+    return _call_gemini(prompt, model="gemini-2.5-flash")

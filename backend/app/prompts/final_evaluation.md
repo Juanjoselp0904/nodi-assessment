@@ -23,9 +23,13 @@ Generate a final evaluation with:
 
 2. **culture_score** (0.0–1.0): Cultural/values fit based on consistency, self-awareness, concrete behavioral examples.
 
-3. **evidence**: A list of the strongest claims (both supporting and concerning) with exact quotes from the candidate's answers.
+3. **hire_recommendation**: "yes", "no", or "maybe". Be opinionated. "yes" = strong signal to advance. "no" = clear red flags or insufficient evidence. "maybe" = mixed signals worth a second-stage interview.
 
-4. **reasoning_md**: A 3-5 paragraph markdown report the recruiter will read. Include: overall impression, strongest technical evidence, cultural signals, concerns or red flags, and a final hiring recommendation with rationale.
+4. **recommendation_reason**: ONE concise sentence (max 20 words) summarizing why. This shows in the recruiter dashboard as a quick filter.
+
+5. **evidence**: A list of the strongest claims (both supporting and concerning) with exact quotes from the candidate's answers.
+
+6. **reasoning_md**: A 3-5 paragraph markdown report the recruiter will read. Include: overall impression, strongest technical evidence, cultural signals, concerns or red flags, and a final hiring recommendation with rationale.
 
 ## Output Format
 
@@ -34,6 +38,8 @@ Return ONLY valid JSON (no markdown wrapper):
 {
   "tech_score": 0.0-1.0,
   "culture_score": 0.0-1.0,
+  "hire_recommendation": "yes" | "no" | "maybe",
+  "recommendation_reason": "one short sentence",
   "evidence": [
     {
       "dimension": "tech" | "culture",

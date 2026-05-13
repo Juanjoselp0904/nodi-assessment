@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, SessionListItem } from "@/lib/api";
 import { ChevronRight, Users } from "lucide-react";
+import HireBadge from "@/components/HireBadge";
 
 function NaturalnessBadge({ factor }: { factor?: number }) {
   if (factor == null) return <span className="text-gray-600 text-xs">—</span>;
@@ -63,6 +64,7 @@ export default function RecruiterPage() {
             <thead>
               <tr className="text-gray-500 border-b border-gray-800">
                 <th className="text-left py-3 pr-4 font-medium">Candidato</th>
+                <th className="text-left py-3 pr-4 font-medium">Recomendación</th>
                 <th className="text-left py-3 pr-4 font-medium">Estado</th>
                 <th className="text-left py-3 pr-4 font-medium">Fit técnico</th>
                 <th className="text-left py-3 pr-4 font-medium">Fit cultural</th>
@@ -74,7 +76,15 @@ export default function RecruiterPage() {
             <tbody>
               {sessions.map((s) => (
                 <tr key={s.id} className="border-b border-gray-900 hover:bg-gray-900/50 transition-colors">
-                  <td className="py-4 pr-4 font-medium text-gray-100">{s.candidate_name}</td>
+                  <td className="py-4 pr-4 font-medium text-gray-100">
+                    {s.candidate_name}
+                    {s.recommendation_reason && (
+                      <div className="text-xs text-gray-500 italic mt-1 max-w-xs truncate">{s.recommendation_reason}</div>
+                    )}
+                  </td>
+                  <td className="py-4 pr-4">
+                    <HireBadge recommendation={s.hire_recommendation} />
+                  </td>
                   <td className="py-4 pr-4">
                     <StatusBadge status={s.status} />
                   </td>

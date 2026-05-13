@@ -59,6 +59,13 @@ export interface EvaluationData {
   reasoning_md: string;
   acoustic_summary: Record<string, unknown>;
   linguistic_summary: Record<string, unknown>;
+  hire_recommendation?: "yes" | "no" | "maybe";
+  recommendation_reason?: string;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 export interface ReportData {
@@ -98,6 +105,8 @@ export interface SessionListItem {
   tech_fit?: number;
   culture_fit?: number;
   naturalness_factor?: number;
+  hire_recommendation?: "yes" | "no" | "maybe";
+  recommendation_reason?: string;
   created_at: string;
 }
 
@@ -153,4 +162,7 @@ export const api = {
 
   getReport: (sessionId: number) =>
     get<ReportData>(`/recruiter/sessions/${sessionId}/report`),
+
+  chat: (sessionId: number, messages: ChatMessage[]) =>
+    post<{ reply: string }>(`/recruiter/sessions/${sessionId}/chat`, { messages }),
 };

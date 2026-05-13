@@ -6,6 +6,8 @@ import ReactMarkdown from "react-markdown";
 import { api, ReportData } from "@/lib/api";
 import EvidenceCard from "@/components/EvidenceCard";
 import NaturalnessBreakdown from "@/components/NaturalnessBreakdown";
+import HireBadge from "@/components/HireBadge";
+import RecruiterChat from "@/components/RecruiterChat";
 import { ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 
 function ScoreRing({ value, label }: { value: number; label: string }) {
@@ -104,7 +106,16 @@ export default function ReportPage() {
 
       {/* Scores header */}
       {evaluation ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-8">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-8 flex flex-col gap-6">
+          {evaluation.hire_recommendation && (
+            <div className="flex justify-center">
+              <HireBadge
+                recommendation={evaluation.hire_recommendation}
+                reason={evaluation.recommendation_reason}
+                size="lg"
+              />
+            </div>
+          )}
           <div className="flex flex-wrap items-center justify-around gap-6">
             <ScoreRing value={evaluation.final_tech_fit} label="Fit técnico final" />
             <ScoreRing value={evaluation.final_culture_fit} label="Fit cultural final" />
@@ -144,6 +155,11 @@ export default function ReportPage() {
 
       {evaluation && (
         <div className="flex flex-col gap-8">
+          {/* AI chat */}
+          <Section title="Chat con la IA">
+            <RecruiterChat sessionId={sessionId} candidateName={session.candidate_name} />
+          </Section>
+
           {/* Reasoning */}
           {evaluation.reasoning_md && (
             <Section title="Análisis del modelo">
