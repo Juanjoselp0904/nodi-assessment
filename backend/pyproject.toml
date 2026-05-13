@@ -17,6 +17,8 @@ dependencies = [
     "aiofiles>=24.1.0",
     "httpx>=0.27.0",
     "imageio-ffmpeg>=0.5.1",
+    "psycopg2-binary>=2.9.9",
+    "boto3>=1.34.0",
 ]
 
 [build-system]

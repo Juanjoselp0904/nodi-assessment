@@ -1,14 +1,12 @@
 import os
 import hashlib
-from pathlib import Path
 from dotenv import load_dotenv
 from google.cloud import texttospeech
+from app.services import storage_service
 
 load_dotenv()
 
 _client = None
-STORAGE_PATH = os.getenv("STORAGE_PATH", "./storage")
-CACHE_DIR = Path(STORAGE_PATH) / "tts_cache"
 
 
 def _get_client() -> texttospeech.TextToSpeechClient:
@@ -23,14 +21,11 @@ def _get_client() -> texttospeech.TextToSpeechClient:
 
 
 def synthesize(text: str, lang: str = "es-US") -> str:
-    """Returns the URL path to the cached mp3 file."""
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
+    """Returns public URL to the mp3 file."""
     cache_key = hashlib.md5(f"{lang}:{text}".encode()).hexdigest()
-    cached_path = CACHE_DIR / f"{cache_key}.mp3"
 
-    if cached_path.exists():
-        return f"/storage/tts_cache/{cache_key}.mp3"
+    if storage_service.tts_exists(cache_key):
+        return storage_service.tts_cached_url(cache_key)
 
     client = _get_client()
 
@@ -50,5 +45,4 @@ def synthesize(text: str, lang: str = "es-US") -> str:
         audio_config=audio_config,
     )
 
-    cached_path.write_bytes(response.audio_content)
-    return f"/storage/tts_cache/{cache_key}.mp3"
+    return storage_service.upload_tts(response.audio_content, cache_key)

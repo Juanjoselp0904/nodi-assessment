@@ -5,15 +5,14 @@ from typing import Optional
 import os
 import json
 import uuid
+import tempfile
 from pathlib import Path
 
 from app.db import get_session
 from app.models import InterviewSession, Question, Answer, SessionStatus
-from app.services import stt_service, naturalness as nat_service, llm_service, interview_engine
+from app.services import stt_service, naturalness as nat_service, llm_service, interview_engine, storage_service
 
 router = APIRouter()
-
-STORAGE_PATH = os.getenv("STORAGE_PATH", "./storage")
 
 
 class QuestionOut(BaseModel):
@@ -84,20 +83,20 @@ async def submit_answer(
     if not question or question.session_id != session_id:
         raise HTTPException(404, "Question not found")
 
-    # Save audio file
-    audio_dir = Path(STORAGE_PATH) / "audio"
-    audio_dir.mkdir(parents=True, exist_ok=True)
+    # Save audio to temp file first (needed for STT + acoustic analysis)
     filename = f"{uuid.uuid4()}.webm"
-    audio_path = audio_dir / filename
+    tmp_path = Path(tempfile.gettempdir()) / filename
 
     content = await audio.read()
-    audio_path.write_bytes(content)
+    tmp_path.write_bytes(content)
+
+    # Upload to storage (local or R2)
+    audio_url = storage_service.upload_audio(str(tmp_path), filename)
 
     # STT
     try:
-        stt_result = stt_service.transcribe(str(audio_path))
+        stt_result = stt_service.transcribe(str(tmp_path))
     except Exception as e:
-        # Fallback: store empty transcript rather than crashing demo
         stt_result = {"text": "[transcription failed]", "words": [], "duration": None}
 
     transcript = stt_result["text"]
@@ -105,7 +104,7 @@ async def submit_answer(
 
     # Acoustic features
     try:
-        acoustic = nat_service.extract_acoustic_features(str(audio_path), words)
+        acoustic = nat_service.extract_acoustic_features(str(tmp_path), words)
     except Exception:
         acoustic = {"acoustic_score": 0.5}
 
@@ -122,10 +121,16 @@ async def submit_answer(
     except Exception:
         linguistic = {"specificity": 0.5, "consistency": 0.5, "cliche_flags": [], "concrete_signals": [], "inconsistencies": []}
 
+    # Cleanup temp file
+    try:
+        tmp_path.unlink()
+    except OSError:
+        pass
+
     # Persist answer
     answer = Answer(
         question_id=question_id,
-        audio_path=f"/storage/audio/{filename}",
+        audio_path=audio_url,
         transcript=transcript,
         word_timestamps_json=json.dumps(words, ensure_ascii=False),
         acoustic_features_json=json.dumps(acoustic, ensure_ascii=False),
