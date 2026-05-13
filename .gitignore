@@ -12,6 +12,8 @@ backend/google_service_account.json
 frontend/node_modules/
 frontend/.next/
 frontend/.env.local
+frontend/tsconfig.tsbuildinfo
+frontend/next-env.d.ts
 
 # Misc
 .claude/
